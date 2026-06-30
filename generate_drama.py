@@ -3,11 +3,13 @@
 """
 用 AI 根据娃娃人设和场景关键词，自动生成 dramas/*.yaml。
 
-用法:
+Kimi（推荐）:
+  1. 复制 .env.example 为 .env，填入 MOONSHOT_API_KEY
+  2. python generate_drama.py --provider kimi --doll nova --theme "雨夜咖啡馆"
+
+OpenAI:
   export OPENAI_API_KEY=sk-...
-  python generate_drama.py --doll nova --theme "雨夜咖啡馆,思念"
-  python generate_drama.py --doll nova --theme "奥克兰清晨" --background coffee_morning
-  python generate_drama.py --doll nova --theme "雨夜" --build
+  python generate_drama.py --doll nova --theme "雨夜咖啡馆"
 """
 
 from __future__ import annotations
@@ -29,6 +31,60 @@ CONFIG_DIR = ROOT / "config"
 DRAMAS_DIR = ROOT / "dramas"
 
 POSITIONS = ("center", "left", "right")
+
+# Kimi 与 OpenAI 接口兼容，换 base_url + model 即可
+PROVIDERS = {
+    "kimi": {
+        "base_url": "https://api.moonshot.cn/v1",
+        "model": "moonshot-v1-8k",
+        "key_envs": ("MOONSHOT_API_KEY", "KIMI_API_KEY"),
+    },
+    "openai": {
+        "base_url": "https://api.openai.com/v1",
+        "model": "gpt-4o-mini",
+        "key_envs": ("OPENAI_API_KEY",),
+    },
+}
+
+
+def load_dotenv(path: Path | None = None) -> None:
+    """加载项目根目录 .env（不覆盖已有环境变量）。"""
+    env_path = path or (ROOT / ".env")
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip("'\"")
+        os.environ.setdefault(key, value)
+
+
+def resolve_api_key(provider: str, explicit: str) -> str:
+    if explicit:
+        return explicit
+    for name in PROVIDERS[provider]["key_envs"]:
+        val = os.environ.get(name, "")
+        if val:
+            return val
+    return ""
+
+
+def parse_json_content(content: str) -> dict:
+    content = content.strip()
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        pass
+    # 去掉可能的 markdown 代码块
+    m = re.search(r"```(?:json)?\s*(\{.*\})\s*```", content, re.DOTALL)
+    if m:
+        return json.loads(m.group(1))
+    start, end = content.find("{"), content.rfind("}")
+    if start >= 0 and end > start:
+        return json.loads(content[start : end + 1])
+    raise SystemExit(f"无法解析 AI 返回的 JSON:\n{content[:500]}")
 
 
 def load_yaml(path: Path) -> dict:
@@ -114,39 +170,50 @@ JSON 格式:
 
 def call_llm(prompt: str, api_key: str, base_url: str, model: str) -> dict:
     url = base_url.rstrip("/") + "/chat/completions"
-    body = json.dumps(
+    messages = [
+        {"role": "system", "content": "You output valid JSON only. 请用 JSON 格式回复。"},
+        {"role": "user", "content": prompt},
+    ]
+    payloads = [
         {
             "model": model,
-            "messages": [
-                {"role": "system", "content": "You output valid JSON only."},
-                {"role": "user", "content": prompt},
-            ],
+            "messages": messages,
             "temperature": 0.8,
             "response_format": {"type": "json_object"},
-        }
-    ).encode("utf-8")
-
-    req = urllib.request.Request(
-        url,
-        data=body,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
         },
-        method="POST",
-    )
+        {
+            "model": model,
+            "messages": messages,
+            "temperature": 0.8,
+        },
+    ]
 
-    try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", errors="replace")
-        raise SystemExit(f"API 请求失败 ({e.code}): {detail}") from e
-    except urllib.error.URLError as e:
-        raise SystemExit(f"无法连接 API: {e.reason}") from e
+    last_error = ""
+    for body_obj in payloads:
+        body = json.dumps(body_obj).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+            content = payload["choices"][0]["message"]["content"]
+            return parse_json_content(content)
+        except urllib.error.HTTPError as e:
+            last_error = e.read().decode("utf-8", errors="replace")
+            if e.code == 400 and body_obj.get("response_format"):
+                continue
+            raise SystemExit(f"API 请求失败 ({e.code}): {last_error}") from e
+        except urllib.error.URLError as e:
+            raise SystemExit(f"无法连接 API: {e.reason}") from e
 
-    content = payload["choices"][0]["message"]["content"]
-    return json.loads(content)
+    raise SystemExit(f"API 请求失败: {last_error}")
 
 
 def validate_drama(data: dict, doll_slug: str, backgrounds: dict) -> dict:
@@ -223,7 +290,11 @@ def run_builder(drama_path: Path) -> int:
 
 
 def main() -> None:
+    load_dotenv()
+
     parser = argparse.ArgumentParser(description="AI 生成剧集 YAML")
+    parser.add_argument("--provider", choices=list(PROVIDERS), default="kimi",
+                        help="API 提供商，默认 kimi（月之暗面）")
     parser.add_argument("--doll", required=True, help="娃娃 slug，见 config/dolls.yaml")
     parser.add_argument("--theme", required=True, help="主题关键词，如「雨夜咖啡馆,思念」")
     parser.add_argument(
@@ -236,24 +307,23 @@ def main() -> None:
     parser.add_argument("--lang", choices=["zh", "en"], default="zh", help="台词语言")
     parser.add_argument("--output", type=Path, help="输出路径，默认 dramas/{slug}.yaml")
     parser.add_argument("--build", action="store_true", help="生成后自动运行 drama_builder")
-    parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"))
-    parser.add_argument(
-        "--api-key",
-        default=os.environ.get("OPENAI_API_KEY", ""),
-        help="OpenAI API Key，也可用环境变量 OPENAI_API_KEY",
-    )
-    parser.add_argument(
-        "--base-url",
-        default=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
-        help="API 地址，兼容 OpenAI 格式的服务可改此项",
-    )
+    parser.add_argument("--model", default="", help="模型名，默认随 provider 自动选择")
+    parser.add_argument("--api-key", default="", help="API Key（建议写在 .env，不要贴在聊天里）")
+    parser.add_argument("--base-url", default="", help="API 地址，Kimi 国内默认 api.moonshot.cn")
     args = parser.parse_args()
 
-    if not args.api_key:
+    provider_cfg = PROVIDERS[args.provider]
+    api_key = resolve_api_key(args.provider, args.api_key)
+    base_url = args.base_url or os.environ.get("OPENAI_BASE_URL", provider_cfg["base_url"])
+    model = args.model or os.environ.get("OPENAI_MODEL", provider_cfg["model"])
+
+    if not api_key:
+        key_names = " / ".join(provider_cfg["key_envs"])
         raise SystemExit(
-            "请设置 API Key:\n"
-            "  export OPENAI_API_KEY=sk-...\n"
-            "或: python generate_drama.py --api-key sk-... ..."
+            f"请设置 {args.provider} API Key（不要发到聊天里）:\n"
+            f"  1. 复制 .env.example 为 .env\n"
+            f"  2. 填入 {key_names}=你的key\n"
+            f"  或: export {provider_cfg['key_envs'][0]}=sk-..."
         )
 
     dolls = load_yaml(CONFIG_DIR / "dolls.yaml")
@@ -280,6 +350,7 @@ def main() -> None:
     print("=" * 55)
     print("  DollWorldwide — AI 起剧")
     print("=" * 55)
+    print(f"  接口: {args.provider} ({model})")
     print(f"  娃娃: {doll.get('name', args.doll)}")
     print(f"  主题: {args.theme}")
     print(f"  背景: {', '.join(bg_slugs)}")

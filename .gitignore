@@ -3,3 +3,4 @@ output_scenes/
 __pycache__/
 *.pyc
 .venv/
+.env
