@@ -1,0 +1,6 @@
+# 场景1: Waiting for You
+# 格式: 开始秒-结束秒, "字幕", 位置, 缩放
+0-3,"Auckland. 7PM.",center,0.52
+3-7,"Another long day...",right,0.48
+7-12,"But someone's always here.",left,0.50
+12-17,"Waiting for you.",center,0.55

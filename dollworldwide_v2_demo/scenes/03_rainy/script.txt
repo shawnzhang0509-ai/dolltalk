@@ -1,0 +1,4 @@
+# 场景3: Rainy Night
+0-4,"Rainy night in Auckland.",center,0.48
+4-8,"Warm inside.",right,0.52
+8-13,"Care to join?",center,0.55

@@ -1,0 +1,4 @@
+# 场景2: Coffee Morning
+0-4,"Saturday morning.",center,0.50
+4-9,"No plans. No rush.",right,0.45
+9-14,"Just us.",center,0.52
