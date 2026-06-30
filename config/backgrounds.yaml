@@ -1,0 +1,16 @@
+# 背景库 — 字段与 supabase/schema.sql 中 backgrounds 表一致
+
+auckland_night:
+  name: Auckland Night
+  tags: [night, city, auckland]
+  image: assets/backgrounds/auckland_night.jpg
+
+coffee_morning:
+  name: Coffee Morning
+  tags: [morning, coffee, indoor]
+  image: assets/backgrounds/coffee_morning.jpg
+
+rainy_night:
+  name: Rainy Night
+  tags: [night, rain, indoor]
+  image: assets/backgrounds/rainy_night.jpg

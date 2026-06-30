@@ -34,8 +34,8 @@ import glob
 import json
 
 # ===================== 全局配置 =====================
-SCENES_DIR = "./scenes"           # 场景源文件夹
-OUTPUT_DIR = "./output_scenes"    # 输出文件夹
+SCENES_DIR = os.environ.get("SCENES_DIR", "./scenes")           # 场景源文件夹
+OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "./output_scenes")    # 输出文件夹
 
 # 默认合成参数（可在单个场景的script.txt中覆盖）
 DEFAULTS = {

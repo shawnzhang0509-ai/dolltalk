@@ -1,0 +1,28 @@
+# 一集剧 — 指定娃娃、背景、台词即可开拍
+# 运行: python drama_builder.py dramas/nova_auckland_night.yaml
+
+title: Nova 的奥克兰之夜
+doll: nova
+
+scenes:
+  - title: Waiting for You
+    background: auckland_night
+    beats:
+      - { start: 0, end: 3, subtitle: "Auckland. 7PM.", position: center, scale: 0.52 }
+      - { start: 3, end: 7, subtitle: "Another long day...", position: right, scale: 0.48 }
+      - { start: 7, end: 12, subtitle: "But someone's always here.", position: left, scale: 0.50 }
+      - { start: 12, end: 17, subtitle: "Waiting for you.", position: center, scale: 0.55 }
+
+  - title: Coffee Morning
+    background: coffee_morning
+    beats:
+      - { start: 0, end: 4, subtitle: "Saturday morning.", position: center, scale: 0.50 }
+      - { start: 4, end: 9, subtitle: "No plans. No rush.", position: right, scale: 0.45 }
+      - { start: 9, end: 14, subtitle: "Just us.", position: center, scale: 0.52 }
+
+  - title: Rainy Night
+    background: rainy_night
+    beats:
+      - { start: 0, end: 4, subtitle: "Rainy night in Auckland.", position: center, scale: 0.48 }
+      - { start: 4, end: 8, subtitle: "Warm inside.", position: right, scale: 0.52 }
+      - { start: 8, end: 13, subtitle: "Care to join?", position: center, scale: 0.55 }
