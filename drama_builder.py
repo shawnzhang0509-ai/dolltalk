@@ -160,6 +160,54 @@ def print_catalog(dolls: dict, backgrounds: dict, dramas_dir: Path) -> None:
         n_scenes = len(drama.get("scenes", []))
         print(f"   {path.name:30} {drama.get('title', path.stem)}  ({n_scenes} 幕)")
 
+    missing = []
+    for slug, doll in dolls.items():
+        for p in doll.get("poses", []):
+            if not resolve_path(ROOT, p).exists():
+                missing.append(p)
+    for slug, bg in backgrounds.items():
+        p = resolve_path(ROOT, bg["image"])
+        if not p.exists():
+            missing.append(bg["image"])
+    if missing:
+        print("\n⚠️  缺少图片（渲染前请放到项目里）:")
+        for p in missing[:8]:
+            print(f"   - {p}")
+        if len(missing) > 8:
+            print(f"   ... 还有 {len(missing) - 8} 个")
+
+
+def pick_drama_interactive(dramas_dir: Path) -> Path | None:
+    """无命令行参数时（如 IDLE 直接运行），交互选择剧集。"""
+    drama_files = sorted(dramas_dir.glob("*.yaml"))
+    if not drama_files:
+        return None
+    if len(drama_files) == 1:
+        print(f"\n▶ 按回车开始渲染: {drama_files[0].name}")
+        print("  输入 n 取消")
+        try:
+            choice = input("> ").strip().lower()
+        except EOFError:
+            return None
+        return None if choice in ("n", "no", "q") else drama_files[0]
+
+    print("\n可选剧集:")
+    for i, p in enumerate(drama_files, 1):
+        drama = load_yaml(p)
+        print(f"  {i}. {p.name} — {drama.get('title', p.stem)}")
+    print("  输入序号，或直接回车选第 1 个")
+    try:
+        choice = input("> ").strip()
+    except EOFError:
+        return None
+    if choice.lower() in ("n", "no", "q"):
+        return None
+    if not choice:
+        return drama_files[0]
+    if choice.isdigit() and 1 <= int(choice) <= len(drama_files):
+        return drama_files[int(choice) - 1]
+    return None
+
 
 def run_scene_engine(scenes_dir: Path, output_dir: Path) -> int:
     engine = ROOT / "scene_engine.py"
@@ -187,13 +235,22 @@ def main() -> None:
     dolls = load_yaml(CONFIG_DIR / "dolls.yaml")
     backgrounds = load_yaml(CONFIG_DIR / "backgrounds.yaml")
 
-    if args.list or not args.drama:
+    if args.list:
         print_catalog(dolls, backgrounds, ROOT / "dramas")
-        if not args.drama:
-            print("\n💡 起剧: python drama_builder.py dramas/你的剧集.yaml")
         return
 
-    drama_path = args.drama if args.drama.is_absolute() else ROOT / args.drama
+    drama_path: Path | None = None
+    if args.drama:
+        drama_path = args.drama if args.drama.is_absolute() else ROOT / args.drama
+    else:
+        print_catalog(dolls, backgrounds, ROOT / "dramas")
+        picked = pick_drama_interactive(ROOT / "dramas")
+        if not picked:
+            print("\n已取消。命令行用法:")
+            print("  python drama_builder.py dramas/nova_auckland_night.yaml")
+            return
+        drama_path = picked
+
     if not drama_path.exists():
         raise SystemExit(f"找不到剧集文件: {drama_path}")
 
