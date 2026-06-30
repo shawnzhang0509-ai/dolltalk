@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-从 drama YAML 一键生成 scenes/ 并调用 scene_engine 渲染。
+本地起剧工具 — 全部数据在 config/ 和 dramas/ 的 YAML 里，无需数据库。
 
 用法:
+  python drama_builder.py --list
   python drama_builder.py dramas/nova_auckland_night.yaml
   python drama_builder.py dramas/nova_auckland_night.yaml --no-render
-  python drama_builder.py dramas/nova_auckland_night.yaml --scenes-dir ./my_scenes
 """
 
 from __future__ import annotations
@@ -133,6 +133,34 @@ def build_scenes(
     return built
 
 
+def print_catalog(dolls: dict, backgrounds: dict, dramas_dir: Path) -> None:
+    print("=" * 55)
+    print("  DollWorldwide — 本地目录")
+    print("=" * 55)
+
+    print("\n👤 娃娃 (config/dolls.yaml):")
+    for slug, doll in dolls.items():
+        poses = doll.get("poses", [])
+        ok = sum(1 for p in poses if resolve_path(ROOT, p).exists())
+        print(f"   {slug:16} {doll.get('name', slug):12}  姿势 {ok}/{len(poses)}")
+
+    print("\n🖼️  背景 (config/backgrounds.yaml):")
+    for slug, bg in backgrounds.items():
+        img = resolve_path(ROOT, bg["image"])
+        mark = "✓" if img.exists() else "✗"
+        tags = ", ".join(bg.get("tags", []))
+        print(f"   {slug:16} {bg.get('name', slug):16} [{tags}] {mark}")
+
+    print("\n🎬 剧集 (dramas/):")
+    drama_files = sorted(dramas_dir.glob("*.yaml"))
+    if not drama_files:
+        print("   (暂无，在 dramas/ 新建 .yaml)")
+    for path in drama_files:
+        drama = load_yaml(path)
+        n_scenes = len(drama.get("scenes", []))
+        print(f"   {path.name:30} {drama.get('title', path.stem)}  ({n_scenes} 幕)")
+
+
 def run_scene_engine(scenes_dir: Path, output_dir: Path) -> int:
     engine = ROOT / "scene_engine.py"
     if not engine.exists():
@@ -147,20 +175,27 @@ def run_scene_engine(scenes_dir: Path, output_dir: Path) -> int:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="从 drama YAML 生成场景并渲染")
-    parser.add_argument("drama", type=Path, help="剧集 YAML，如 dramas/nova_auckland_night.yaml")
+    parser = argparse.ArgumentParser(description="本地 YAML 起剧并渲染")
+    parser.add_argument("drama", type=Path, nargs="?", help="剧集 YAML，如 dramas/nova_auckland_night.yaml")
+    parser.add_argument("--list", action="store_true", help="列出娃娃、背景、剧集")
     parser.add_argument("--scenes-dir", type=Path, default=DEFAULT_SCENES_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--no-render", action="store_true", help="只生成 scenes/，不调用 scene_engine")
     parser.add_argument("--clean", action="store_true", help="生成前清空 scenes 目录")
     args = parser.parse_args()
 
+    dolls = load_yaml(CONFIG_DIR / "dolls.yaml")
+    backgrounds = load_yaml(CONFIG_DIR / "backgrounds.yaml")
+
+    if args.list or not args.drama:
+        print_catalog(dolls, backgrounds, ROOT / "dramas")
+        if not args.drama:
+            print("\n💡 起剧: python drama_builder.py dramas/你的剧集.yaml")
+        return
+
     drama_path = args.drama if args.drama.is_absolute() else ROOT / args.drama
     if not drama_path.exists():
         raise SystemExit(f"找不到剧集文件: {drama_path}")
-
-    dolls = load_yaml(CONFIG_DIR / "dolls.yaml")
-    backgrounds = load_yaml(CONFIG_DIR / "backgrounds.yaml")
 
     print("=" * 55)
     print("  DollWorldwide — Drama Builder")

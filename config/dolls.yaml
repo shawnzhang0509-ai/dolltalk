@@ -1,5 +1,5 @@
-# 娃娃档案 — 字段与 supabase/schema.sql 中 dolls + doll_poses 表一致
-# image 填本地路径；上云后改为 Supabase Storage URL 即可
+# 娃娃档案（本地数据源，直接编辑此文件即可）
+# poses 填本地图片路径，相对于项目根目录
 
 nova:
   name: Nova

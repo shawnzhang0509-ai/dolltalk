@@ -1,4 +1,4 @@
-# 背景库 — 字段与 supabase/schema.sql 中 backgrounds 表一致
+# 背景库（本地数据源）
 
 auckland_night:
   name: Auckland Night
