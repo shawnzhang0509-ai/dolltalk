@@ -252,7 +252,15 @@ def main() -> None:
             print(f"   {line}")
     else:
         print("\n📭 inbox 里没有可识别的文件")
-        print("   运行 python sort_assets.py --list-rules 查看命名规则")
+        dolls_dir = ROOT / "assets" / "dolls"
+        flat_imgs = [p for p in dolls_dir.glob("*") if p.is_file() and not p.name.startswith(".")] if dolls_dir.exists() else []
+        if flat_imgs:
+            print(f"   但 assets/dolls/ 里已有 {len(flat_imgs)} 张图，下面会同步 config")
+        else:
+            print("   两种用法:")
+            print("   ① 新图扔进 inbox/ → 再运行本脚本")
+            print("   ② 图已在 assets/dolls/ → 运行: python sort_assets.py --sync-only")
+            print("   命名规则: python sort_assets.py --list-rules")
 
     if skipped:
         print(f"\n⚠️  无法识别 ({len(skipped)} 个，请检查文件名):")

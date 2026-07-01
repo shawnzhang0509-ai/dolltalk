@@ -1,8 +1,8 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-echo 把图片按规则命名后放进 inbox 文件夹
-echo 命名规则: python sort_assets.py --list-rules
+echo 同步 assets/dolls 和 assets/backgrounds 到 config
 echo.
-python sort_assets.py
+python sort_assets.py --sync-only
+echo.
 pause
