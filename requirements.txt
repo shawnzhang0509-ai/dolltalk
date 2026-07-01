@@ -1,3 +1,6 @@
 Pillow>=10.0.0
 numpy>=1.24.0
 PyYAML>=6.0
+
+# 可选：复杂背景 AI 抠图（体积较大，首次运行会下载模型）
+# pip install rembg

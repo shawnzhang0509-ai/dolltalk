@@ -28,7 +28,8 @@ script.txt 格式:
 """
 
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageFilter
-import numpy as np
+import os
+import glob
 import re
 
 # ===================== 全局配置 =====================
@@ -60,15 +61,7 @@ def ensure_dir(path):
     os.makedirs(path, exist_ok=True)
 
 
-def remove_black_bg(img_path, threshold=35):
-    """去掉黑色背景"""
-    img = Image.open(img_path).convert("RGBA")
-    arr = np.array(img)
-    mask = ((arr[:,:,0] < threshold) &
-            (arr[:,:,1] < threshold) &
-            (arr[:,:,2] < threshold))
-    arr[mask] = [0, 0, 0, 0]
-    return Image.fromarray(arr)
+from matte_utils import remove_black_bg
 
 
 def get_font(size):

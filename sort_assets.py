@@ -40,14 +40,20 @@ def normalize_ext(ext: str) -> str:
     return "jpg" if ext == "jpeg" else ext
 
 
-def match_doll(filename: str, patterns: list[str]) -> tuple[str, str, str] | None:
+def match_doll(filename: str, patterns: list[str]) -> tuple[str, str, str, str | None] | None:
+    """返回 (doll, pose, ext, emotion_or_none)"""
     for pat in patterns:
         m = re.match(pat, filename, re.IGNORECASE)
-        if m:
-            doll = m.group("doll").lower()
-            pose = f"{int(m.group('pose')):02d}"
-            ext = normalize_ext(m.group("ext"))
-            return doll, pose, ext
+        if not m:
+            continue
+        doll = m.group("doll").lower()
+        pose = f"{int(m.group('pose')):02d}"
+        emotion = m.groupdict().get("emotion")
+        if emotion:
+            emotion = emotion.lower()
+            return doll, pose, "png", emotion
+        ext = normalize_ext(m.group("ext"))
+        return doll, pose, ext, None
     return None
 
 
@@ -64,7 +70,9 @@ def match_background(filename: str, patterns: list[str]) -> tuple[str, str] | No
 def classify_file(filename: str, rules: dict) -> Path | None:
     doll = match_doll(filename, rules.get("doll_patterns", []))
     if doll:
-        slug, pose, ext = doll
+        slug, pose, ext, emotion = doll
+        if emotion:
+            return Path("assets") / "dolls" / slug / emotion / f"pose_{pose}.png"
         return Path("assets") / "dolls" / slug / f"pose_{pose}.{ext}"
 
     bg = match_background(filename, rules.get("background_patterns", []))
@@ -87,21 +95,37 @@ def sync_dolls_config(assets_root: Path) -> list[str]:
         if not doll_dir.is_dir():
             continue
         slug = doll_dir.name
-        poses = sorted(doll_dir.glob("pose_*.*"))
-        rel_poses = [str(p.relative_to(ROOT)).replace("\\", "/") for p in poses]
+        emotions: dict[str, list[str]] = {}
+        all_poses: list[str] = []
+
+        for sub in sorted(doll_dir.iterdir()):
+            if sub.is_dir():
+                poses = sorted(sub.glob("pose_*.*"))
+                if poses:
+                    rel = [str(p.relative_to(ROOT)).replace("\\", "/") for p in poses]
+                    emotions[sub.name] = rel
+                    all_poses.extend(rel)
+            elif sub.name.startswith("pose_"):
+                rel = str(sub.relative_to(ROOT)).replace("\\", "/")
+                all_poses.append(rel)
 
         if slug not in dolls:
             dolls[slug] = {
                 "name": slug.capitalize(),
                 "personality": "",
                 "default_scale": 0.5,
-                "poses": rel_poses,
+                "poses": sorted(set(all_poses)),
             }
             changes.append(f"新增娃娃: {slug}")
         else:
-            if dolls[slug].get("poses") != rel_poses:
-                dolls[slug]["poses"] = rel_poses
-                changes.append(f"更新姿势: {slug} ({len(rel_poses)} 张)")
+            if emotions:
+                dolls[slug]["emotions"] = emotions
+            if all_poses:
+                dolls[slug]["poses"] = sorted(set(all_poses))
+                changes.append(f"更新姿势: {slug} ({len(all_poses)} 张)")
+            if emotions:
+                emo_summary = ", ".join(f"{k}:{len(v)}" for k, v in emotions.items())
+                changes.append(f"更新情绪: {slug} [{emo_summary}]")
 
     save_yaml(dolls_path, dolls)
     return changes
@@ -170,6 +194,7 @@ def print_rules() -> None:
     print("  素材命名规则（扔进 inbox/ 后运行 sort_assets.py）")
     print("=" * 55)
     print("\n娃娃姿势:")
+    print("  doll_nova_happy_01.png   (带情绪)")
     print("  doll_nova_01.png")
     print("  doll-nova-02.jpg")
     print("  nova_pose_01.png")

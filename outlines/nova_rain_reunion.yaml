@@ -24,7 +24,7 @@ scenes:
       - "你终于回来了。"
     beat_count: 4
     locked_beats:
-      - { start: 0, end: 4, subtitle: "又是这样一个雨夜。", position: center, scale: 0.48 }
+      - { start: 0, end: 4, subtitle: "又是这样一个雨夜。", position: center, scale: 0.48, emotion: waiting }
 
   - title: 清晨和解
     background: coffee_morning
@@ -35,11 +35,12 @@ scenes:
     must_include:
       - "早安。"
     beat_count: 3
+    default_emotion: happy
 
   - title: 城市夜景
     background: auckland_night
     mode: fixed
     beats:
-      - { start: 0, end: 4, subtitle: "Auckland. 7PM.", position: center, scale: 0.52 }
-      - { start: 4, end: 9, subtitle: "Some nights feel longer.", position: right, scale: 0.48 }
-      - { start: 9, end: 14, subtitle: "But you're here now.", position: center, scale: 0.55 }
+      - { start: 0, end: 4, subtitle: "Auckland. 7PM.", position: center, scale: 0.52, emotion: waiting }
+      - { start: 4, end: 9, subtitle: "Some nights feel longer.", position: right, scale: 0.48, emotion: sad }
+      - { start: 9, end: 14, subtitle: "But you're here now.", position: center, scale: 0.55, emotion: happy }

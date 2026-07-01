@@ -66,6 +66,24 @@ def write_script(beats: list[dict], script_path: Path) -> None:
     script_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def pick_pose(doll: dict, emotion: str | None, beat_index: int) -> Path | None:
+    """按情绪选姿势图，无情绪则轮换默认 poses。"""
+    if emotion:
+        emo_paths = doll.get("emotions", {}).get(emotion, [])
+        resolved = [resolve_path(ROOT, p) for p in emo_paths]
+        existing = [p for p in resolved if p.exists()]
+        if existing:
+            return existing[beat_index % len(existing)]
+        print(f"      ⚠️  情绪 {emotion!r} 无可用图，使用默认姿势")
+
+    poses = doll.get("poses", [])
+    resolved = [resolve_path(ROOT, p) for p in poses]
+    existing = [p for p in resolved if p.exists()]
+    if existing:
+        return existing[beat_index % len(existing)]
+    return None
+
+
 def build_scenes(
     drama_path: Path,
     scenes_dir: Path,
@@ -81,9 +99,10 @@ def build_scenes(
     if doll_slug not in dolls:
         raise SystemExit(f"未知娃娃 slug: {doll_slug!r}，请检查 config/dolls.yaml")
     doll = dolls[doll_slug]
+    has_emotions = bool(doll.get("emotions"))
     pose_paths = [resolve_path(ROOT, p) for p in doll.get("poses", [])]
-    if not pose_paths:
-        raise SystemExit(f"娃娃 {doll_slug} 没有配置 poses")
+    if not pose_paths and not has_emotions:
+        raise SystemExit(f"娃娃 {doll_slug} 没有配置 poses 或 emotions")
 
     missing_poses = [p for p in pose_paths if not p.exists()]
     if missing_poses:
@@ -122,13 +141,19 @@ def build_scenes(
         else:
             print(f"   ⚠️  背景图不存在: {bg_path}")
 
-        for j, pose_src in enumerate(pose_paths, start=1):
-            if pose_src.exists():
+        for j, beat in enumerate(beats, start=1):
+            emotion = beat.get("emotion")
+            pose_src = pick_pose(doll, emotion, j - 1)
+            if pose_src and pose_src.exists():
                 ext = pose_src.suffix or ".png"
                 copy_or_link(pose_src, scene_path / f"model_{j:02d}{ext}")
+            elif emotion:
+                print(f"      ⚠️  第{j}句情绪={emotion} 找不到图")
 
+        emo_used = {b.get("emotion") for b in beats if b.get("emotion")}
+        emo_note = f", 情绪={','.join(emo_used)}" if emo_used else ""
         built.append(scene_path)
-        print(f"   ✅ {folder_name}/ — {len(beats)} 句台词, 背景={bg_slug}")
+        print(f"   ✅ {folder_name}/ — {len(beats)} 句台词, 背景={bg_slug}{emo_note}")
 
     return built
 
@@ -140,9 +165,17 @@ def print_catalog(dolls: dict, backgrounds: dict, dramas_dir: Path) -> None:
 
     print("\n👤 娃娃 (config/dolls.yaml):")
     for slug, doll in dolls.items():
-        poses = doll.get("poses", [])
-        ok = sum(1 for p in poses if resolve_path(ROOT, p).exists())
-        print(f"   {slug:16} {doll.get('name', slug):12}  姿势 {ok}/{len(poses)}")
+        emos = doll.get("emotions", {})
+        if emos:
+            parts = []
+            for e, paths in emos.items():
+                ok = sum(1 for p in paths if resolve_path(ROOT, p).exists())
+                parts.append(f"{e}:{ok}/{len(paths)}")
+            print(f"   {slug:16} {doll.get('name', slug):12}  {', '.join(parts)}")
+        else:
+            poses = doll.get("poses", [])
+            ok = sum(1 for p in poses if resolve_path(ROOT, p).exists())
+            print(f"   {slug:16} {doll.get('name', slug):12}  姿势 {ok}/{len(poses)}")
 
     print("\n🖼️  背景 (config/backgrounds.yaml):")
     for slug, bg in backgrounds.items():

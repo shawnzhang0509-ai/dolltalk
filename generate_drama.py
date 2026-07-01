@@ -173,13 +173,27 @@ def normalize_beat(beat: dict, default_scale: float = 0.5) -> dict:
     pos = beat.get("position", "center")
     if pos not in POSITIONS:
         pos = "center"
-    return {
+    result = {
         "start": int(beat["start"]),
         "end": int(beat["end"]),
         "subtitle": str(beat.get("subtitle", "")),
         "position": pos,
         "scale": round(float(beat.get("scale", default_scale)), 2),
     }
+    if beat.get("emotion"):
+        result["emotion"] = str(beat["emotion"])
+    return result
+
+
+def get_emotion_list_from_config() -> list[str]:
+    path = CONFIG_DIR / "emotions.yaml"
+    if path.exists():
+        data = load_yaml(path)
+        return data.get("emotions", [
+            "happy", "sad", "waiting", "angry", "shy",
+            "surprised", "neutral", "loving", "tired",
+        ])
+    return ["happy", "sad", "waiting", "angry", "shy", "surprised", "neutral", "loving", "tired"]
 
 
 def build_scene_prompt(
@@ -199,6 +213,9 @@ def build_scene_prompt(
     must = scene_def.get("must_include", [])
     beat_count = int(scene_def.get("beat_count", 3))
     locked = scene_def.get("locked_beats", [])
+
+    emotions = get_emotion_list_from_config()
+    emotion_str = ", ".join(emotions)
 
     locked_text = ""
     start_from = 0
@@ -237,11 +254,12 @@ def build_scene_prompt(
 
 任务: {task}
 position 在 center/left/right 间变化，scale 建议 {default_scale} 左右。
+每句 beats 可加 emotion 字段，从以下选: {emotion_str}
 
 只返回 JSON:
 {{
   "beats": [
-    {{"start": 0, "end": 4, "subtitle": "台词", "position": "center", "scale": {default_scale}}}
+    {{"start": 0, "end": 4, "subtitle": "台词", "position": "center", "scale": {default_scale}, "emotion": "waiting"}}
   ]
 }}"""
 
@@ -459,10 +477,12 @@ def write_drama_yaml(drama: dict, out_path: Path) -> None:
         lines.append("    beats:")
         for beat in scene["beats"]:
             sub = beat["subtitle"].replace('"', "'")
+            emo = beat.get("emotion")
+            emo_part = f', emotion: {emo}' if emo else ""
             lines.append(
                 f'      - {{ start: {beat["start"]}, end: {beat["end"]}, '
                 f'subtitle: "{sub}", position: {beat["position"]}, '
-                f'scale: {beat["scale"]} }}'
+                f'scale: {beat["scale"]}{emo_part} }}'
             )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")

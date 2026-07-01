@@ -1,0 +1,11 @@
+# 支持的情绪标签（批量标情绪 + 剧情选图用）
+emotions:
+  - happy
+  - sad
+  - waiting
+  - angry
+  - shy
+  - surprised
+  - neutral
+  - loving
+  - tired

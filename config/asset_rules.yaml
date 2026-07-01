@@ -1,5 +1,9 @@
 # 素材命名规则 — 把图片扔进 inbox/，运行 sort_assets.py 自动归类
 #
+# 带情绪的娃娃图（抠图+标情绪后）:
+#   doll_nova_happy_01.png   → assets/dolls/nova/happy/pose_01.png
+#   doll_nova_waiting_02.png → assets/dolls/nova/waiting/pose_02.png
+#
 # 娃娃姿势（黑底图）:
 #   doll_nova_01.png        → assets/dolls/nova/pose_01.png
 #   doll-nova-02.jpg        → assets/dolls/nova/pose_02.jpg
@@ -15,6 +19,7 @@
 inbox: inbox
 
 doll_patterns:
+  - '^doll[-_](?P<doll>[a-zA-Z0-9]+)[-_](?P<emotion>[a-z]+)[-_](?P<pose>\d{1,2})\.png$'
   - '^doll[-_](?P<doll>[a-zA-Z0-9]+)[-_](?P<pose>\d{1,2})\.(?P<ext>png|jpe?g)$'
   - '^(?P<doll>[a-zA-Z0-9]+)[-_]pose[-_](?P<pose>\d{1,2})\.(?P<ext>png|jpe?g)$'
 
