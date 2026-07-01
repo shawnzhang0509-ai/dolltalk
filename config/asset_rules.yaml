@@ -1,0 +1,23 @@
+# 素材命名规则 — 把图片扔进 inbox/，运行 sort_assets.py 自动归类
+#
+# 娃娃姿势（黑底图）:
+#   doll_nova_01.png        → assets/dolls/nova/pose_01.png
+#   doll-nova-02.jpg        → assets/dolls/nova/pose_02.jpg
+#   nova_pose_01.png        → assets/dolls/nova/pose_01.png
+#
+# 背景（16:9）:
+#   bg_rainy_night.jpg      → assets/backgrounds/rainy_night.jpg
+#   bg-auckland_night.png   → assets/backgrounds/auckland_night.png
+#   background_coffee_morning.jpg → assets/backgrounds/coffee_morning.jpg
+#
+# 规则按顺序匹配，先匹配先生效。
+
+inbox: inbox
+
+doll_patterns:
+  - '^doll[-_](?P<doll>[a-zA-Z0-9]+)[-_](?P<pose>\d{1,2})\.(?P<ext>png|jpe?g)$'
+  - '^(?P<doll>[a-zA-Z0-9]+)[-_]pose[-_](?P<pose>\d{1,2})\.(?P<ext>png|jpe?g)$'
+
+background_patterns:
+  - '^bg[-_](?P<bg>[a-zA-Z0-9_]+)\.(?P<ext>jpe?g|png)$'
+  - '^background[-_](?P<bg>[a-zA-Z0-9_]+)\.(?P<ext>jpe?g|png)$'

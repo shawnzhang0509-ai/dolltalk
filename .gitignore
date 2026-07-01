@@ -1,5 +1,7 @@
 scenes/
 output_scenes/
+inbox/*
+!inbox/.gitkeep
 __pycache__/
 *.pyc
 .venv/

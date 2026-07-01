@@ -1,0 +1,45 @@
+# 剧情大纲 — 你控制结构，AI 只负责填台词
+# 生成: python generate_drama.py --outline outlines/nova_rain_reunion.yaml --build
+#
+# 每幕 mode:
+#   fixed   — 完全手写 beats，AI 不改动
+#   ai      — 按 plot / must_include 让 AI 写台词
+#   hybrid  — locked_beats 保留，AI 补剩余句
+
+title: Nova 雨夜重逢
+doll: nova
+theme: 雨夜等待、久别重逢、温柔治愈
+style: 短句、有画面感、不超过15字一句
+language: zh
+
+scenes:
+  - title: 雨夜独处
+    background: rainy_night
+    mode: hybrid
+    plot: |
+      窗外下雨，她独自在家
+      一直等着某个人回来
+    must_include:
+      - "又是这样一个雨夜。"
+      - "你终于回来了。"
+    beat_count: 4
+    locked_beats:
+      - { start: 0, end: 4, subtitle: "又是这样一个雨夜。", position: center, scale: 0.48 }
+
+  - title: 清晨和解
+    background: coffee_morning
+    mode: ai
+    plot: |
+      第二天早晨，气氛变得轻松
+      一起喝咖啡，不用多说话
+    must_include:
+      - "早安。"
+    beat_count: 3
+
+  - title: 城市夜景
+    background: auckland_night
+    mode: fixed
+    beats:
+      - { start: 0, end: 4, subtitle: "Auckland. 7PM.", position: center, scale: 0.52 }
+      - { start: 4, end: 9, subtitle: "Some nights feel longer.", position: right, scale: 0.48 }
+      - { start: 9, end: 14, subtitle: "But you're here now.", position: center, scale: 0.55 }

@@ -3,12 +3,13 @@
 """
 用 AI 根据娃娃人设和场景关键词，自动生成 dramas/*.yaml。
 
-Kimi（推荐）:
-  1. 复制 .env.example 为 .env，填入 MOONSHOT_API_KEY
-  2. python generate_drama.py --provider kimi --doll nova --theme "雨夜咖啡馆"
+推荐工作流（可控）:
+  1. 图片扔进 inbox/，按规则命名
+  2. python sort_assets.py
+  3. 编辑 outlines/你的大纲.yaml
+  4. python generate_drama.py --outline outlines/你的大纲.yaml --build
 
-OpenAI:
-  export OPENAI_API_KEY=sk-...
+自由主题（AI 全权）:
   python generate_drama.py --doll nova --theme "雨夜咖啡馆"
 """
 
@@ -168,6 +169,190 @@ JSON 格式:
 }}"""
 
 
+def normalize_beat(beat: dict, default_scale: float = 0.5) -> dict:
+    pos = beat.get("position", "center")
+    if pos not in POSITIONS:
+        pos = "center"
+    return {
+        "start": int(beat["start"]),
+        "end": int(beat["end"]),
+        "subtitle": str(beat.get("subtitle", "")),
+        "position": pos,
+        "scale": round(float(beat.get("scale", default_scale)), 2),
+    }
+
+
+def build_scene_prompt(
+    doll_name: str,
+    personality: str,
+    theme: str,
+    style: str,
+    scene_def: dict,
+    language: str,
+    default_scale: float,
+) -> str:
+    lang_hint = "中文" if language == "zh" else "English"
+    mode = scene_def.get("mode", "ai")
+    bg_slug = scene_def["background"]
+    title = scene_def.get("title", bg_slug)
+    plot = scene_def.get("plot", "").strip()
+    must = scene_def.get("must_include", [])
+    beat_count = int(scene_def.get("beat_count", 3))
+    locked = scene_def.get("locked_beats", [])
+
+    locked_text = ""
+    start_from = 0
+    if locked:
+        lines = [f"  - {b['start']}-{b['end']}s: {b.get('subtitle', '')}" for b in locked]
+        locked_text = "已锁定台词（必须保留，不得修改）:\n" + "\n".join(lines)
+        start_from = max(int(b["end"]) for b in locked)
+
+    if mode == "hybrid":
+        need = max(0, beat_count - len(locked))
+        task = f"在保留锁定台词的前提下，再写 {need} 句台词，总时长约 {beat_count * 4} 秒"
+        if start_from > 0:
+            task += f"，新增台词从第 {start_from} 秒开始"
+    else:
+        task = f"写 {beat_count} 句台词，每句 3-5 秒，从 0 秒开始"
+
+    must_text = ""
+    if must:
+        must_text = "必须出现的台词（可微调措辞但意思保留）:\n" + "\n".join(f"  - {m}" for m in must)
+
+    return f"""你是 DollWorldwide 短剧编剧。为娃娃「{doll_name}」写一幕戏。
+
+全剧主题: {theme}
+风格: {style}
+本幕: {title}
+背景 slug: {bg_slug}
+台词语言: {lang_hint}
+娃娃人设: {personality}
+
+剧情要求:
+{plot or '（按主题自由发挥）'}
+
+{must_text}
+
+{locked_text}
+
+任务: {task}
+position 在 center/left/right 间变化，scale 建议 {default_scale} 左右。
+
+只返回 JSON:
+{{
+  "beats": [
+    {{"start": 0, "end": 4, "subtitle": "台词", "position": "center", "scale": {default_scale}}}
+  ]
+}}"""
+
+
+def merge_beats(locked: list[dict], generated: list[dict], default_scale: float) -> list[dict]:
+    locked_norm = [normalize_beat(b, default_scale) for b in locked]
+    locked_keys = {(b["start"], b["end"], b["subtitle"]) for b in locked_norm}
+
+    merged = list(locked_norm)
+    for beat in generated:
+        nb = normalize_beat(beat, default_scale)
+        key = (nb["start"], nb["end"], nb["subtitle"])
+        if key in locked_keys:
+            continue
+        overlap = any(not (nb["end"] <= l["start"] or nb["start"] >= l["end"]) for l in locked_norm)
+        if not overlap:
+            merged.append(nb)
+
+    merged.sort(key=lambda b: b["start"])
+    return merged
+
+
+def generate_scene_beats(
+    scene_def: dict,
+    doll: dict,
+    doll_slug: str,
+    theme: str,
+    style: str,
+    language: str,
+    api_key: str,
+    base_url: str,
+    model: str,
+) -> list[dict]:
+    mode = scene_def.get("mode", "ai")
+    default_scale = float(doll.get("default_scale", 0.5))
+
+    if mode == "fixed":
+        return [normalize_beat(b, default_scale) for b in scene_def.get("beats", [])]
+
+    locked = scene_def.get("locked_beats", [])
+    if mode == "ai" and not scene_def.get("plot") and not scene_def.get("must_include"):
+        raise SystemExit(f"场景「{scene_def.get('title')}」mode=ai 需要 plot 或 must_include")
+
+    prompt = build_scene_prompt(
+        doll_name=doll.get("name", doll_slug),
+        personality=doll.get("personality", ""),
+        theme=theme,
+        style=style,
+        scene_def=scene_def,
+        language=language,
+        default_scale=default_scale,
+    )
+    raw = call_llm(prompt, api_key, base_url, model)
+    generated = raw.get("beats", [])
+    if not generated:
+        raise SystemExit(f"AI 未返回 beats: {scene_def.get('title')}")
+
+    if mode == "hybrid":
+        return merge_beats(locked, generated, default_scale)
+    return [normalize_beat(b, default_scale) for b in generated]
+
+
+def generate_from_outline(
+    outline_path: Path,
+    api_key: str,
+    base_url: str,
+    model: str,
+) -> dict:
+    outline = load_yaml(outline_path)
+    doll_slug = outline["doll"]
+    dolls = load_yaml(CONFIG_DIR / "dolls.yaml")
+    backgrounds = load_yaml(CONFIG_DIR / "backgrounds.yaml")
+
+    if doll_slug not in dolls:
+        raise SystemExit(f"未知娃娃 {doll_slug!r}")
+
+    doll = dolls[doll_slug]
+    theme = outline.get("theme", outline.get("title", ""))
+    style = outline.get("style", "短句、有画面感")
+    language = outline.get("language", "zh")
+    scenes_out = []
+
+    for scene_def in outline.get("scenes", []):
+        bg_slug = scene_def["background"]
+        if bg_slug not in backgrounds:
+            valid = ", ".join(backgrounds.keys())
+            raise SystemExit(f"未知背景 {bg_slug!r}，可用: {valid}")
+
+        mode = scene_def.get("mode", "ai")
+        print(f"   📝 {scene_def.get('title', bg_slug)} [{mode}]")
+
+        if mode == "fixed":
+            beats = generate_scene_beats(scene_def, doll, doll_slug, theme, style, language,
+                                         api_key, base_url, model)
+        else:
+            beats = generate_scene_beats(scene_def, doll, doll_slug, theme, style, language,
+                                         api_key, base_url, model)
+
+        scenes_out.append({
+            "title": str(scene_def.get("title", bg_slug)),
+            "background": bg_slug,
+            "beats": beats,
+        })
+
+    return {
+        "title": str(outline.get("title", outline_path.stem)),
+        "doll": doll_slug,
+        "scenes": scenes_out,
+    }
+
+
 def call_llm(prompt: str, api_key: str, base_url: str, model: str) -> dict:
     url = base_url.rstrip("/") + "/chat/completions"
     messages = [
@@ -289,14 +474,20 @@ def run_builder(drama_path: Path) -> int:
     return result.returncode
 
 
+def outline_needs_ai(outline: dict) -> bool:
+    return any(s.get("mode", "ai") != "fixed" for s in outline.get("scenes", []))
+
+
 def main() -> None:
     load_dotenv()
 
-    parser = argparse.ArgumentParser(description="AI 生成剧集 YAML")
+    parser = argparse.ArgumentParser(description="AI 生成剧集 YAML（支持大纲可控模式）")
     parser.add_argument("--provider", choices=list(PROVIDERS), default="kimi",
                         help="API 提供商，默认 kimi（月之暗面）")
-    parser.add_argument("--doll", required=True, help="娃娃 slug，见 config/dolls.yaml")
-    parser.add_argument("--theme", required=True, help="主题关键词，如「雨夜咖啡馆,思念」")
+    parser.add_argument("--outline", type=Path,
+                        help="剧情大纲 outlines/xxx.yaml（推荐，可精细控制）")
+    parser.add_argument("--doll", help="娃娃 slug，见 config/dolls.yaml")
+    parser.add_argument("--theme", help="主题关键词，如「雨夜咖啡馆,思念」")
     parser.add_argument(
         "--background",
         action="append",
@@ -316,6 +507,50 @@ def main() -> None:
     api_key = resolve_api_key(args.provider, args.api_key)
     base_url = args.base_url or os.environ.get("OPENAI_BASE_URL", provider_cfg["base_url"])
     model = args.model or os.environ.get("OPENAI_MODEL", provider_cfg["model"])
+
+    print("=" * 55)
+    print("  DollWorldwide — AI 起剧")
+    print("=" * 55)
+
+    if args.outline:
+        outline_path = args.outline if args.outline.is_absolute() else ROOT / args.outline
+        if not outline_path.exists():
+            raise SystemExit(f"找不到大纲: {outline_path}")
+
+        outline = load_yaml(outline_path)
+        if outline_needs_ai(outline) and not api_key:
+            key_names = " / ".join(provider_cfg["key_envs"])
+            raise SystemExit(
+                f"大纲含 AI 场景，请设置 API Key:\n"
+                f"  复制 .env.example 为 .env，填入 {key_names}"
+            )
+
+        print(f"  模式: 大纲可控")
+        print(f"  大纲: {outline_path.name}")
+        print(f"  标题: {outline.get('title')}")
+        print(f"  娃娃: {outline.get('doll')}")
+        print("-" * 55)
+
+        drama = generate_from_outline(outline_path, api_key, base_url, model)
+        out_path = args.output if args.output else DRAMAS_DIR / f"{slugify(drama['title'])}.yaml"
+        if not out_path.is_absolute():
+            out_path = ROOT / out_path
+
+        write_drama_yaml(drama, out_path)
+        print(f"\n✅ 已生成: {out_path}")
+        print(f"   场景: {len(drama['scenes'])} 幕")
+
+        if args.build:
+            print("\n" + "-" * 55)
+            sys.exit(run_builder(out_path))
+        print(f"\n💡 下一步: python drama_builder.py {out_path.relative_to(ROOT)}")
+        return
+
+    if not args.doll or not args.theme:
+        raise SystemExit(
+            "请指定 --outline outlines/xxx.yaml\n"
+            "或: --doll nova --theme \"雨夜咖啡馆\""
+        )
 
     if not api_key:
         key_names = " / ".join(provider_cfg["key_envs"])
@@ -347,9 +582,7 @@ def main() -> None:
     if args.backgrounds:
         scenes_count = len(bg_slugs)
 
-    print("=" * 55)
-    print("  DollWorldwide — AI 起剧")
-    print("=" * 55)
+    print(f"  模式: 自由主题")
     print(f"  接口: {args.provider} ({model})")
     print(f"  娃娃: {doll.get('name', args.doll)}")
     print(f"  主题: {args.theme}")
