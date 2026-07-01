@@ -29,9 +29,7 @@ script.txt 格式:
 
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont, ImageFilter
 import numpy as np
-import os
-import glob
-import json
+import re
 
 # ===================== 全局配置 =====================
 SCENES_DIR = os.environ.get("SCENES_DIR", "./scenes")           # 场景源文件夹
@@ -174,6 +172,15 @@ def composite_frame(bg_path, model_path, config, subtitle=""):
     return result
 
 
+def safe_filename_part(text: str, max_len: int = 20) -> str:
+    """去掉 Windows/macOS 文件名非法字符。"""
+    text = text[:max_len]
+    text = re.sub(r'[\\/:*?"<>|]', "", text)
+    text = text.replace(" ", "_").replace(".", "")
+    text = re.sub(r"_+", "_", text).strip("_")
+    return text or "frame"
+
+
 def parse_script(script_path):
     """
     解析script.txt
@@ -272,7 +279,7 @@ def process_scene(scene_dir, output_dir):
         frame = composite_frame(bg_path, model_path, config, entry.get("subtitle", ""))
 
         # 文件名: frame_0001_00-05s_Auckland7PM.jpg
-        safe_sub = entry.get("subtitle", "")[:20].replace(" ", "_").replace(".", "")
+        safe_sub = safe_filename_part(entry.get("subtitle", ""))
         fname = f"frame_{i+1:04d}_{entry['start']:02d}-{entry['end']:02d}s_{safe_sub}.jpg"
         out_path = os.path.join(scene_output, fname)
         frame.save(out_path, quality=95)
