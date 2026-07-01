@@ -6,7 +6,7 @@
 流程:
   1. 生图后按规则命名 → 扔进 inbox/
   2. python sort_assets.py
-  3. 编辑 dramas/xxx.yaml
+  3. python script_editor.py   ← 剧本小程序
   4. python drama_builder.py dramas/xxx.yaml
 """
 
