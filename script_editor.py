@@ -206,7 +206,7 @@ class ScriptEditor(tk.Tk):
         ttk.Label(right, text="情绪").grid(row=row, column=0, sticky=tk.W, pady=4)
         emo_cb = ttk.Combobox(right, textvariable=self.emotion_var, values=[""] + self.emotions, width=12)
         emo_cb.grid(row=row, column=1, sticky=tk.W)
-        ttk.Label(right, text="(对应 inbox 命名 doll_娃娃_情绪_01)").grid(row=row, column=2, columnspan=2, sticky=tk.W)
+        ttk.Label(right, text="(平铺模式: assets/dolls/ 文件名含娃娃名即可)").grid(row=row, column=2, columnspan=2, sticky=tk.W)
 
         row += 1
         scene_box = ttk.LabelFrame(right, text="当前场景", padding=6)

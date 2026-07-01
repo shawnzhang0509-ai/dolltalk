@@ -1,20 +1,29 @@
-# 素材命名规则 — 把图片扔进 inbox/，运行 sort_assets.py 自动归类
+# 素材命名规则
 #
-# 娃娃（你自己生图后，按情绪命名）:
-#   doll_nova_happy_01.png   → assets/dolls/nova/happy/pose_01.png
-#   doll_nova_sad_01.png     → assets/dolls/nova/sad/pose_01.png
-#   doll_nova_01.png         → assets/dolls/nova/pose_01.png
+# doll_layout: flat → 娃娃图直接放 assets/dolls/，不分子文件夹（推荐）
+# doll_layout: nested → 旧版 assets/dolls/nova/pose_01.png
 #
-# 背景:
-#   bg_rainy_night.jpg       → assets/backgrounds/rainy_night.jpg
-#   background_coffee_morning.jpg
+# 【平铺模式】直接把图放进 assets/dolls/ 或 inbox/，文件名含娃娃名即可:
+#   nova_04.png
+#   Nova-4.png
+#   doll_nova_04.png
+#   doll_nova_happy_01.png
+#   DWWD01_-_Nova_-_Xuexian-4-removebg-preview.png   ← 含 Nova 即可识别
+#
+# 背景仍放 assets/backgrounds/
 
 inbox: inbox
+doll_layout: flat
 
 doll_patterns:
   - '^doll[-_](?P<doll>[a-zA-Z0-9]+)[-_](?P<emotion>[a-z]+)[-_](?P<pose>\d{1,2})\.png$'
   - '^doll[-_](?P<doll>[a-zA-Z0-9]+)[-_](?P<pose>\d{1,2})\.(?P<ext>png|jpe?g)$'
-  - '^(?P<doll>[a-zA-Z0-9]+)[-_]pose[-_](?P<pose>\d{1,2})\.(?P<ext>png|jpe?g)$'
+  - '^(?P<doll>nova)[-_](?P<pose>\d{1,2})\.(?P<ext>png|jpe?g)$'
+  - '^(?P<doll>[a-zA-Z0-9]+)[-_](?P<pose>\d{1,2})\.(?P<ext>png|jpe?g)$'
+
+# inbox 里无法识别的长文件名，但含 Nova → 原样放进 assets/dolls/
+doll_loose_patterns:
+  - '(?i)nova'
 
 background_patterns:
   - '^bg[-_](?P<bg>[a-zA-Z0-9_]+)\.(?P<ext>jpe?g|png)$'

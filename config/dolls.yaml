@@ -6,5 +6,7 @@ nova:
   personality: 温柔、耐心，常在奥克兰的夜晚等待
   default_scale: 0.52
   poses:
-    - assets/dolls/nova/pose_01.png
-    - assets/dolls/nova/pose_02.png
+    - assets/dolls/nova_01.png
+    - assets/dolls/nova_02.png
+  # 也支持长文件名，例如:
+  # - assets/dolls/DWWD01_-_Nova_-_Xuexian-4-removebg-preview.png
