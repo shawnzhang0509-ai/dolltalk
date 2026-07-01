@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-一键全流程: 整理素材 → 按大纲生成剧情 → 渲染帧
+轻量一键流程（无 AI）: 整理素材 → 渲染场景
 
 用法:
-  python make.py --outline outlines/nova_rain_reunion.yaml
-  python make.py --drama dramas/nova_auckland_night.yaml   # 跳过 AI，直接渲染
-  python make.py --outline outlines/nova_rain_reunion.yaml --sort-only
+  python make.py --drama dramas/nova_auckland_night.yaml
+  python make.py --sort-only
 """
 
 from __future__ import annotations
@@ -25,15 +24,14 @@ def run(cmd: list[str]) -> int:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="DollWorldwide 一键制作")
-    parser.add_argument("--outline", type=Path, help="剧情大纲 outlines/xxx.yaml")
-    parser.add_argument("--drama", type=Path, help="已有剧集 dramas/xxx.yaml（跳过 AI）")
+    parser = argparse.ArgumentParser(description="DollWorldwide 场景制作（无 AI）")
+    parser.add_argument("--drama", type=Path, help="剧集 dramas/xxx.yaml")
     parser.add_argument("--sort-only", action="store_true", help="只整理 inbox 素材")
-    parser.add_argument("--dry-sort", action="store_true", help="预览素材归类，不移动")
+    parser.add_argument("--dry-sort", action="store_true", help="预览归类")
     args = parser.parse_args()
 
     print("=" * 55)
-    print("  DollWorldwide — 一键制作")
+    print("  DollWorldwide — 场景制作")
     print("=" * 55)
 
     sort_cmd = ["sort_assets.py"]
@@ -45,36 +43,18 @@ def main() -> None:
     if args.sort_only:
         return
 
-    drama_path: Path | None = None
-
-    if args.outline:
-        outline = args.outline if args.outline.is_absolute() else ROOT / args.outline
-        gen_cmd = ["generate_drama.py", "--outline", str(outline)]
-        if run(gen_cmd) != 0:
-            sys.exit(1)
-        # generate_drama 输出路径由标题决定，交给 builder 交互或传 dramas
-        drama_path = None  # builder will pick if needed
-        # Re-run generate with knowing output - simpler: generate then list newest yaml
-        dramas = sorted((ROOT / "dramas").glob("*.yaml"), key=lambda p: p.stat().st_mtime, reverse=True)
-        if dramas:
-            drama_path = dramas[0]
-    elif args.drama:
-        drama_path = args.drama if args.drama.is_absolute() else ROOT / args.drama
-    else:
-        print("\n请指定 --outline 或 --drama")
-        print("  python make.py --outline outlines/nova_rain_reunion.yaml")
-        print("  python make.py --drama dramas/nova_auckland_night.yaml")
-        sys.exit(1)
-
-    if drama_path and drama_path.exists():
-        if run(["drama_builder.py", str(drama_path)]) != 0:
+    if args.drama:
+        drama = args.drama if args.drama.is_absolute() else ROOT / args.drama
+        if not drama.exists():
+            raise SystemExit(f"找不到: {drama}")
+        if run(["drama_builder.py", str(drama)]) != 0:
             sys.exit(1)
     else:
         if run(["drama_builder.py"]) != 0:
             sys.exit(1)
 
     print("\n" + "=" * 55)
-    print("🎉 完成！帧在 output_scenes/ 文件夹")
+    print("🎉 完成！帧在 output_scenes/")
     print("=" * 55)
 
 

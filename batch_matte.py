@@ -1,18 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-批量抠图 — 把娃娃原图批量去背景，输出透明 PNG。
+批量抠图（可选）— 本地处理，无 AI API。
 
-用法:
-  1. 原图放进 inbox/raw/（文件名随意）
-  2. python batch_matte.py --doll nova
-  3. python batch_emotion.py --doll nova --tag    # AI 自动标情绪
-  4. python sort_assets.py                        # 归入 assets/
-
-方法:
-  --method auto   黑底自动用阈值，其他用 rembg（推荐）
-  --method black  只去黑底（快，适合产品棚拍黑背景）
-  --method rembg  AI 抠图（适合复杂背景，需 pip install rembg）
+你自己生图若已是透明 PNG，可跳过此步，直接 sort_assets.py。
 """
 
 from __future__ import annotations
@@ -95,9 +86,7 @@ def main() -> None:
             print(f"   ❌ 失败: {e}")
 
     print(f"\n✅ 完成 {done} 张 → {out.resolve()}/")
-    print("\n💡 下一步:")
-    print("   python batch_emotion.py --doll nova --tag")
-    print("   python sort_assets.py")
+    print("\n💡 下一步: python sort_assets.py → python drama_builder.py dramas/xxx.yaml")
 
 
 if __name__ == "__main__":

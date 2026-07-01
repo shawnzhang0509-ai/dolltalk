@@ -252,7 +252,7 @@ def main() -> None:
         if not doll_changes and not bg_changes:
             print("   配置已是最新")
 
-    print("\n💡 下一步: python generate_drama.py --outline outlines/xxx.yaml --build")
+    print("\n💡 下一步: python drama_builder.py dramas/xxx.yaml")
 
 
 if __name__ == "__main__":

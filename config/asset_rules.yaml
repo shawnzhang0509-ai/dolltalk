@@ -1,20 +1,13 @@
 # 素材命名规则 — 把图片扔进 inbox/，运行 sort_assets.py 自动归类
 #
-# 带情绪的娃娃图（抠图+标情绪后）:
+# 娃娃（你自己生图后，按情绪命名）:
 #   doll_nova_happy_01.png   → assets/dolls/nova/happy/pose_01.png
-#   doll_nova_waiting_02.png → assets/dolls/nova/waiting/pose_02.png
+#   doll_nova_sad_01.png     → assets/dolls/nova/sad/pose_01.png
+#   doll_nova_01.png         → assets/dolls/nova/pose_01.png
 #
-# 娃娃姿势（黑底图）:
-#   doll_nova_01.png        → assets/dolls/nova/pose_01.png
-#   doll-nova-02.jpg        → assets/dolls/nova/pose_02.jpg
-#   nova_pose_01.png        → assets/dolls/nova/pose_01.png
-#
-# 背景（16:9）:
-#   bg_rainy_night.jpg      → assets/backgrounds/rainy_night.jpg
-#   bg-auckland_night.png   → assets/backgrounds/auckland_night.png
-#   background_coffee_morning.jpg → assets/backgrounds/coffee_morning.jpg
-#
-# 规则按顺序匹配，先匹配先生效。
+# 背景:
+#   bg_rainy_night.jpg       → assets/backgrounds/rainy_night.jpg
+#   background_coffee_morning.jpg
 
 inbox: inbox
 

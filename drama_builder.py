@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-本地起剧工具 — 全部数据在 config/ 和 dramas/ 的 YAML 里，无需数据库。
+本地场景制作 — 无 AI，你自己生图 + 写剧本即可。
 
-用法:
-  python drama_builder.py --list
-  python drama_builder.py dramas/nova_auckland_night.yaml
-  python drama_builder.py dramas/nova_auckland_night.yaml --no-render
+流程:
+  1. 生图后按规则命名 → 扔进 inbox/
+  2. python sort_assets.py
+  3. 编辑 dramas/xxx.yaml
+  4. python drama_builder.py dramas/xxx.yaml
 """
 
 from __future__ import annotations

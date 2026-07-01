@@ -1,0 +1,18 @@
+# 剧集模板 — 复制为 dramas/我的剧名.yaml 后编辑
+# 运行: python drama_builder.py dramas/我的剧名.yaml
+
+title: 我的剧名
+doll: nova
+
+scenes:
+  - title: 第一幕
+    background: rainy_night
+    beats:
+      - { start: 0, end: 4, subtitle: "又是这样一个雨夜。", position: center, scale: 0.5, emotion: waiting }
+      - { start: 4, end: 8, subtitle: "你终于回来了。", position: center, scale: 0.52, emotion: happy }
+
+  - title: 第二幕
+    background: coffee_morning
+    beats:
+      - { start: 0, end: 4, subtitle: "早安。", position: center, scale: 0.5, emotion: happy }
+      - { start: 4, end: 9, subtitle: "今天不急。", position: right, scale: 0.48, emotion: neutral }
